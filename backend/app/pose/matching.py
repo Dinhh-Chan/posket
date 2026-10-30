@@ -86,6 +86,24 @@ def _bbox(points: list[Point]) -> tuple[float, float, float, float] | None:
     return min(xs), min(ys), max(xs), max(ys)
 
 
+# People filter ---------------------------------------------------------------------------------
+
+CORE = (0, 5, 6, 11, 12)  # nose, shoulders, hips
+
+
+def _visible(kp: list, i: int) -> bool:
+    p = kp[i]
+    return p is not None and (len(p) < 3 or p[2] is None or p[2] >= VISIBLE)
+
+
+def valid_persons(persons: list[dict]) -> list[dict]:
+    """People with enough of the body visible to count (at least 3 of nose, shoulders, hips).
+    The detector runs with a low threshold so that small people in group photos are found; this
+    removes the weak false detections that threshold lets through on backgrounds."""
+    return [p for p in persons
+            if p.get("score", 1.0) >= 0.4 and sum(_visible(p["keypoints"], i) for i in CORE) >= 3]
+
+
 # Body matching ---------------------------------------------------------------------------------
 
 def _torso(kp: list, need_visible: bool) -> float | None:
@@ -271,6 +289,7 @@ def _final_score(result: dict) -> float:
 
 def match_body(pose: dict, persons: list[dict]) -> dict:
     needed = pose["people"]
+    persons = valid_persons(persons)
     base = {"pose_id": pose["id"], "limbs": []}
     if not persons:
         hint = "Chưa thấy ai trong khung" if needed == 1 else f"Đưa đủ {needed} người vào khung"

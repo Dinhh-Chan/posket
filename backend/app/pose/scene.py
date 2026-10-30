@@ -7,27 +7,11 @@ easiest pose to strike), then by difficulty; for objects by how many objects the
 
 from __future__ import annotations
 
-from app.pose.matching import VISIBLE, match_body
+from app.pose.matching import _visible, match_body, valid_persons
 
 PET_LABELS = {"cat", "dog", "bird", "horse", "sheep", "cow"}
-CORE = (0, 5, 6, 11, 12)  # nose, shoulders, hips
 MAX_SUGGESTIONS = 8
 
-
-def _visible(kp: list, i: int) -> bool:
-    p = kp[i]
-    return p is not None and (len(p) < 3 or p[2] is None or p[2] >= VISIBLE)
-
-
-def valid_persons(persons: list[dict]) -> list[dict]:
-    """People with enough of the body visible to be worth counting (noses + shoulders at least)."""
-    out = []
-    for p in persons:
-        kp = p["keypoints"]
-        core_visible = sum(_visible(kp, i) for i in CORE)
-        if p.get("score", 1.0) >= 0.4 and core_visible >= 3:
-            out.append(p)
-    return out
 
 
 def _is_selfie(person: dict) -> bool:

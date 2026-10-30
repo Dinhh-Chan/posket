@@ -179,3 +179,13 @@ def test_defining_limbs_must_match_before_ready():
     m = match_pose(get_pose("solo-hand-on-hip"), people_of("solo-confident"), [])
     assert not m["ready"] and m["score"] < 85
     assert m["hints"][0].startswith(("Dang tay", "Khép tay", "Giơ tay", "Hạ tay"))
+
+
+def test_weak_false_detections_are_ignored():
+    """A low-confidence 'person' on the background must not change the people count."""
+    real = people_of("solo-wave")
+    ghost = detected(get_pose("solo-confident")["persons"][0], scale=0.3, dx=0.35, visibility=0.3)
+    ghost["score"] = 0.2
+    m = match_pose(get_pose("solo-wave"), real + [ghost], [])
+    assert m["status"] == "ok" and m["ready"]
+    assert classify_scene(real + [ghost], [])["kind"] == "solo"

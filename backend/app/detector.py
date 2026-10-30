@@ -87,7 +87,8 @@ class MediaPipeDetector:
         models_dir: Path,
         *,
         num_poses: int = 5,
-        min_pose_confidence: float = 0.5,
+        min_pose_confidence: float = 0.3,  # 0.5 misses small people in group shots; weak
+        # false detections are filtered by app.pose.matching.valid_persons
         min_object_score: float = 0.35,
         max_objects: int = 10,
     ) -> None:
