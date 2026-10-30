@@ -17,6 +17,7 @@ Everything is in the displayed square frame: x, y in 0..1, y pointing down.
 from __future__ import annotations
 
 import math
+from functools import lru_cache
 from itertools import combinations, permutations
 
 from app.pose.library import get_library
@@ -27,6 +28,8 @@ OK_DEG = 25.0  # a limb is drawn green when within this angle
 READY_SCORE = 85
 MIN_COVERAGE = 0.6  # share of the template's limb weight that must be visible for status "ok"
 MIN_FRAMING = 0.55  # position/size must be roughly right before the pose counts as ready
+MIN_OK_SHARE = 0.85  # share of the evaluated limb weight that must be green before "ready"
+LENGTH_TOLERANCE = math.log(1.25)  # limb length (relative to the torso) may differ by 25 %
 POSE_SHARE = 0.85  # final score = POSE_SHARE * limb score + (1 - POSE_SHARE) * framing
 
 LIMB_WEIGHTS = {
@@ -85,30 +88,90 @@ def _bbox(points: list[Point]) -> tuple[float, float, float, float] | None:
 
 # Body matching ---------------------------------------------------------------------------------
 
+def _torso(kp: list, need_visible: bool) -> float | None:
+    """Shoulder-midpoint to hip-midpoint distance: the unit for relative limb lengths."""
+    s, h = _point(kp, "mid_shoulder", need_visible), None
+    lh, rh = _point(kp, 11, need_visible), _point(kp, 12, need_visible)
+    if lh and rh:
+        h = ((lh[0] + rh[0]) / 2, (lh[1] + rh[1]) / 2)
+    if not (s and h):
+        return None
+    d = math.hypot(s[0] - h[0], s[1] - h[1])
+    return d if d > 1e-3 else None
+
+
+def _length_score(ratio: float) -> float:
+    excess = abs(math.log(ratio)) - LENGTH_TOLERANCE
+    return 1.0 if excess <= 0 else max(0.0, 1.0 - excess / math.log(2))
+
+
+@lru_cache(maxsize=1)
+def _neutral() -> dict[str, tuple[Point, float]]:
+    """Limb direction and relative length of a relaxed standing person (solo-confident)."""
+    pose = next((p for p in get_library()["poses"] if p["id"] == "solo-confident"), None)
+    if not pose:
+        return {}
+    kp = pose["persons"][0]["keypoints"]
+    torso = _torso(kp, False) or 1.0
+    out = {}
+    for limb_id, a, b, _ in _limbs():
+        pa, pb = _point(kp, a, False), _point(kp, b, False)
+        if pa and pb:
+            vec = (pb[0] - pa[0], pb[1] - pa[1])
+            out[limb_id] = (vec, math.hypot(*vec) / torso)
+    return out
+
+
+def _distinctiveness(limb_id: str, t_vec: Point, t_rel: float | None) -> float:
+    """How much this template limb differs from a relaxed standing pose (0 = not at all, 2 = a lot).
+    Limbs that define the pose (the raised arm, the short thigh of a seated pose) weigh more."""
+    ref = _neutral().get(limb_id)
+    if not ref:
+        return 0.0
+    dev = _angle_between(t_vec, ref[0]) or 0.0
+    stretch = abs(math.log(t_rel / ref[1])) / math.log(2) if t_rel and ref[1] > 0 else 0.0
+    return min(2.0, max(min(dev, 90.0) / 45.0, stretch))
+
+
 def _score_person(template_kp: list, detected_kp: list) -> dict:
-    """Limb-by-limb comparison of one template person with one detected person (labels as given)."""
-    rows, total_w, seen_w, score_w = [], 0.0, 0.0, 0.0
+    """Limb-by-limb comparison of one template person with one detected person (labels as given):
+    direction (angle) times relative length (against the torso), weighted by how much each limb
+    defines the pose."""
+    rows, seen_w, score_w = [], 0.0, 0.0
+    base_total, base_seen = 0.0, 0.0  # coverage uses plain weights: how much of the body is visible
+    t_torso, d_torso = _torso(template_kp, False), _torso(detected_kp, True)
     for limb_id, a, b, label in _limbs():
         ta, tb = _point(template_kp, a, False), _point(template_kp, b, False)
         if not (ta and tb):
             continue
-        weight = LIMB_WEIGHTS.get(limb_id, 0.5)
-        total_w += weight
+        t_vec = (tb[0] - ta[0], tb[1] - ta[1])
+        t_rel = math.hypot(*t_vec) / t_torso if t_torso else None
+        base = LIMB_WEIGHTS.get(limb_id, 0.5)
+        weight = base * (1.0 + _distinctiveness(limb_id, t_vec, t_rel))
+        base_total += base
         da, db = _point(detected_kp, a, True), _point(detected_kp, b, True)
         if not (da and db):
             continue
-        t_vec, d_vec = (tb[0] - ta[0], tb[1] - ta[1]), (db[0] - da[0], db[1] - da[1])
+        d_vec = (db[0] - da[0], db[1] - da[1])
         delta = _angle_between(t_vec, d_vec)
         if delta is None:
             continue
-        s = _limb_score(delta)
+        length = 1.0
+        rel_ratio = None
+        if t_rel and d_torso and limb_id not in ("left_torso", "right_torso"):
+            rel_ratio = (math.hypot(*d_vec) / d_torso) / t_rel
+            length = _length_score(rel_ratio) if rel_ratio > 1e-6 else 0.0
+        s = _limb_score(delta) * length
         seen_w += weight
+        base_seen += base
         score_w += weight * s
-        rows.append({"limb": limb_id, "label": label, "score": round(s, 3), "ok": delta <= OK_DEG,
-                     "delta": delta, "weight": weight, "t_vec": t_vec, "d_vec": d_vec,
+        rows.append({"limb": limb_id, "label": label, "score": round(s, 3),
+                     "ok": delta <= OK_DEG and length >= 0.6, "delta": delta, "length": length,
+                     "rel_ratio": rel_ratio, "weight": weight, "t_vec": t_vec, "d_vec": d_vec,
                      "d_mid": ((da[0] + db[0]) / 2, (da[1] + db[1]) / 2)})
-    coverage = seen_w / total_w if total_w else 0.0
+    coverage = base_seen / base_total if base_total else 0.0
     pose_score = score_w / seen_w if seen_w else 0.0
+    ok_share = sum(r["weight"] for r in rows if r["ok"]) / seen_w if seen_w else 0.0
     # Framing on the keypoints both sides have, so selfie templates without legs compare fairly.
     common = [i for i in range(17) if _point(template_kp, i, False) and _point(detected_kp, i, True)]
     tb_ = _bbox([_point(template_kp, i, False) for i in common])
@@ -120,7 +183,7 @@ def _score_person(template_kp: list, detected_kp: list) -> dict:
         ratio = d_h / t_h
         framing = max(0.0, 1.0 - (abs(dx) / 0.25 + abs(math.log(ratio)) / math.log(1.8)) / 2)
     return {"rows": rows, "coverage": coverage, "pose_score": pose_score, "framing": framing,
-            "dx": dx, "ratio": ratio, "bbox": db_}
+            "dx": dx, "ratio": ratio, "bbox": db_, "ok_share": ok_share}
 
 
 def _best_labelling(template_kp: list, detected_kp: list) -> dict:
@@ -143,6 +206,13 @@ def _limb_hint(row: dict, centre_x: float) -> str:
     outward = 1 if side == "phải" else -1
     t_out, d_out = t[0] / tn * outward, d[0] / dn * outward
     limb = row["limb"]
+    if row["delta"] <= OK_DEG and row["length"] < 0.6 and row["rel_ratio"]:
+        shorter = row["rel_ratio"] > 1  # the template limb looks shorter (points at the camera)
+        if "thigh" in limb or "shin" in limb:
+            return "Ngồi xuống theo dáng mẫu" if shorter else "Duỗi thẳng chân, đứng lên"
+        if "arm" in limb:
+            return f"Đưa tay bên {side} hướng về máy ảnh" if shorter else f"Duỗi thẳng tay bên {side}"
+        return "Xoay người theo dáng mẫu"
     if limb == "head":
         if abs(t[0] / tn) < 0.15:
             return "Giữ đầu thẳng"
@@ -226,7 +296,9 @@ def match_body(pose: dict, persons: list[dict]) -> dict:
     limbs = [{"person": i, "limb": row["limb"], "ok": row["ok"], "score": row["score"]}
              for i, r in enumerate(results) for row in r["rows"]]
     status = "partial" if partial else "ok"
-    ready = status == "ok" and score >= READY_SCORE and min(r["framing"] for r in results) >= MIN_FRAMING
+    ready = (status == "ok" and score >= READY_SCORE
+             and min(r["framing"] for r in results) >= MIN_FRAMING
+             and min(r["ok_share"] for r in results) >= MIN_OK_SHARE)
     if ready:
         hints = ["Giữ nguyên tư thế"]
     else:

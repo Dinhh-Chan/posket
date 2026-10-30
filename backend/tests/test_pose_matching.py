@@ -161,3 +161,21 @@ def test_scores_are_finite_on_degenerate_input():
     zero = {"keypoints": [[0.5, 0.5, 1.0]] * 17, "bbox": [0.5, 0.5, 0, 0], "score": 0.9}
     m = match_pose(pose, [zero], [])
     assert m["score"] is None or math.isfinite(m["score"])
+
+
+def test_sitting_and_standing_are_told_apart_by_limb_length():
+    """Front-view sitting looks like standing with short (foreshortened) thighs."""
+    standing = people_of("solo-confident")
+    sit = match_pose(get_pose("solo-sit-chair"), standing, [])
+    assert sit["score"] < 80 and not sit["ready"]
+    assert {"left_thigh", "right_thigh"} <= {l["limb"] for l in sit["limbs"] if not l["ok"]}
+    assert sit["hints"][0] == "Ngồi xuống theo dáng mẫu"
+    top = suggest_poses(classify_scene(standing, []), standing, [], get_library())
+    assert "solo-sit-chair" not in [s["pose_id"] for s in top[:3]]
+
+
+def test_defining_limbs_must_match_before_ready():
+    """Hand on hip with the arm hanging down: most limbs fit, but the one that defines the pose doesn't."""
+    m = match_pose(get_pose("solo-hand-on-hip"), people_of("solo-confident"), [])
+    assert not m["ready"] and m["score"] < 85
+    assert m["hints"][0].startswith(("Dang tay", "Khép tay", "Giơ tay", "Hạ tay"))
