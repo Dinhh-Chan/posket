@@ -1,0 +1,46 @@
+[project]
+name = "posecam-backend"
+version = "0.1.0"
+description = "PoseCam backend: photo sharing with friends plus live pose guidance"
+requires-python = ">=3.12"
+dependencies = [
+    "bcrypt>=5.0.0",
+    "fastapi>=0.162.0",
+    "mediapipe>=1.2.0",
+    "numpy>=2.5.4",
+    "pillow>=13.0.0",
+    "pydantic>=2",
+    "pyjwt>=2.15.1",
+    "python-multipart>=0.0.32",
+    "sqlalchemy>=2",
+    "uvicorn[standard]>=0.54.0",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+filterwarnings = [
+    # Starlette's TestClient now prefers httpx2; httpx still works.
+    "ignore:Using `httpx` with `starlette.testclient` is deprecated:UserWarning",
+]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.2.0",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["app/pose", "tests/test_pose_matching.py"]  # owned by the pose track
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF"]
+ignore = ["RUF001", "RUF002", "RUF003"]  # Vietnamese text and typographic characters
+
+[tool.ruff.lint.isort]
+known-first-party = ["app", "conftest"]

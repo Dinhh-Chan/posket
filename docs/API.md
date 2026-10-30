@@ -7,7 +7,18 @@ login, health and the pose library. Timestamps are ISO-8601 UTC strings. IDs are
 Errors: HTTP status + `{"detail": "<machine_code>", "message": "<Vietnamese text for the UI>"}`.
 Codes used below: `invalid_credentials`, `username_taken`, `invalid_username`, `not_found`,
 `forbidden`, `already_friends`, `request_exists`, `cannot_friend_self`, `invalid_image`,
-`caption_too_long`, `no_recipients`.
+`caption_too_long`, `no_recipients`, plus two generic ones: `unauthorized` (missing, invalid or
+expired token: log in again) and `validation_error` (malformed or out-of-range input, e.g. a
+password shorter than 6 characters, a missing field, `limit=0`).
+
+| Status | Codes |
+|---|---|
+| 400 | `cannot_friend_self`, `invalid_image`, `no_recipients` |
+| 401 | `invalid_credentials` (login only), `unauthorized` |
+| 403 | `forbidden` (e.g. not the sender/recipient, a `recipient_ids` entry that is not a friend) |
+| 404 | `not_found` |
+| 409 | `username_taken`, `already_friends`, `request_exists` |
+| 422 | `invalid_username`, `caption_too_long`, `validation_error` |
 
 ## Objects
 
@@ -31,6 +42,7 @@ Codes used below: `invalid_credentials`, `username_taken`, `invalid_username`, `
 ## Auth
 - `POST /auth/register` `{"username", "display_name", "password"}` → `201 {"token", "user": User}`.
   Username: 3–20 chars `[a-z0-9_.]`, stored lowercase. Password ≥ 6 chars.
+  `display_name`: 1–40 chars; optional at registration (defaults to the username).
 - `POST /auth/login` `{"username", "password"}` → `{"token", "user": User}`
 - `GET /me` → `User`
 - `PATCH /me` `{"display_name"}` → `User`
@@ -118,6 +130,8 @@ square side), plus a neck stroke from the shoulder midpoint to the head circle, 
 
 ```jsonc
 {
+  // visibility 0..1: confidence the keypoint is visible inside the frame (< 0.5: treat as missing);
+  // score: mean landmark presence (≈1 when the whole body is in frame); persons ordered left to right
   "persons": [ {"keypoints": [[x, y, visibility], ... 17], "bbox": [x, y, w, h], "score": 0.93} ],
   "objects": [ {"label": "cup", "score": 0.81, "bbox": [x, y, w, h]} ],   // persons excluded
   "scene": {"kind": "solo", "person_count": 1, "object_count": 0},
