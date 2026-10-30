@@ -1,0 +1,12 @@
+<resources>
+
+    <!-- Base application theme: dark, black window background (no white flash on launch). -->
+    <style name="AppTheme" parent="Theme.AppCompat.NoActionBar">
+        <item name="android:editTextBackground">@drawable/rn_edit_text_material</item>
+        <item name="android:windowBackground">@android:color/black</item>
+        <!-- Dialog buttons, switches, text selection in the PoseCam accent yellow. -->
+        <item name="colorAccent">#FFC93C</item>
+        <item name="android:forceDarkAllowed">false</item>
+    </style>
+
+</resources>

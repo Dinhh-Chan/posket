@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">PoseCam</string>
+    <string name="widget_description">Ảnh mới nhất bạn bè gửi cho bạn</string>
+    <string name="widget_logged_out">Đăng nhập PoseCam để xem ảnh bạn bè gửi</string>
+    <string name="widget_empty">Chưa có ảnh mới từ bạn bè</string>
+    <string name="widget_preview">PoseCam\nẢnh từ bạn bè</string>
+    <string name="widget_image_description">Ảnh mới nhất từ bạn bè</string>
+</resources>
