@@ -87,8 +87,8 @@ def render_previews(library: dict) -> list[Path]:
     from PIL import Image, ImageDraw, ImageFont
 
     cell, pad = 300, 8
-    font = ImageFont.load_default(size=15)
-    small = ImageFont.load_default(size=12)
+    font = _font(15)
+    small = _font(12)
     out_dir = HERE / "preview"
     out_dir.mkdir(exist_ok=True)
     written = []
@@ -110,6 +110,15 @@ def render_previews(library: dict) -> list[Path]:
         sheet.save(path)
         written.append(path)
     return written
+
+
+def _font(size):
+    from PIL import ImageFont
+
+    for path in ("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf"):
+        if Path(path).exists():
+            return ImageFont.truetype(path, size)
+    return ImageFont.load_default(size=size)
 
 
 def draw_pose(d, pose: dict, library: dict, size: int, font) -> None:

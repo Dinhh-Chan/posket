@@ -19,8 +19,8 @@ KEYPOINTS = [
 IDX = {name: i for i, name in enumerate(KEYPOINTS)}
 
 # Segment lengths as fractions of standing body height (crown to ankle ≈ 1).
-TORSO, NECK, SHOULDER_HALF, HIP_HALF = 0.30, 0.13, 0.115, 0.075
-UPPER_ARM, FOREARM, THIGH, SHIN, HEAD_R = 0.165, 0.15, 0.245, 0.245, 0.058
+TORSO, NECK, SHOULDER_HALF, HIP_HALF = 0.30, 0.105, 0.115, 0.065
+UPPER_ARM, FOREARM, THIGH, SHIN, HEAD_R = 0.18, 0.15, 0.245, 0.245, 0.064
 
 Point = tuple[float, float]
 
@@ -160,7 +160,7 @@ class Figure:
                 out.append(None)
             else:
                 out.append((round(p[0], 4), round(p[1], 4)))
-        head_c = add(nose, hd, 0.028 * s)
+        head_c = add(nose, hd, 0.012 * s)
         head = {"cx": round(head_c[0], 4), "cy": round(head_c[1], 4), "r": round(HEAD_R * s, 4)}
         return out, head
 

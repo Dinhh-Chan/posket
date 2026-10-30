@@ -51,7 +51,7 @@ def kp(fig: Figure, name: str):
 def peace(side: str) -> Limb:
     """Hand in a V sign beside the face, elbow down."""
     s = 1 if side == "l" else -1
-    return Limb(target="nose", offset=(0.09 * s, 0.0), prefer=(0.35 * s, 1))
+    return Limb(target="nose", offset=(0.085 * s, 0.01), prefer=(0.35 * s, 1), k_upper=0.5)
 
 
 def on_hip(side: str) -> Limb:
@@ -87,15 +87,15 @@ def crossed_arms():
 
 def heart_overhead():
     return {
-        "la": Limb(target="head_top", offset=(0.006, -0.025), prefer=(1, -0.3)),
-        "ra": Limb(target="head_top", offset=(-0.006, -0.025), prefer=(-1, -0.3)),
+        "la": Limb(172, -128),
+        "ra": Limb(-172, 128),
     }
 
 
 def crouch(x, y, s):
     return Figure(
         x, y, s,
-        ll=Limb(78, 4, k_upper=0.62), rl=Limb(-78, -4, k_upper=0.62),
+        ll=Limb(102, -8, k_upper=0.55), rl=Limb(-102, 8, k_upper=0.55),
         la=Limb(target="left_knee", offset=(-0.01, 0.01), prefer=(1, 0.2)),
         ra=Limb(target="right_knee", offset=(0.01, 0.01), prefer=(-1, 0.2)),
     )
@@ -166,7 +166,7 @@ def solo_poses():
         {"id": "solo-chin", "name": "Chống cằm suy tư", "category": "solo", "difficulty": 2,
          "tags": ["standing", "hand"], "tip": "Một tay chống cằm, tay kia đỡ khuỷu tay, nghiêng đầu nhẹ",
          "figures": [Figure(0.5, 0.55, head=8,
-                            ra=Limb(target="nose", offset=(-0.004, 0.05), prefer=(-0.2, 1)),
+                            ra=Limb(target="nose", offset=(-0.004, 0.05), prefer=(-0.2, 1), k_upper=0.5),
                             la=Limb(target="chest", offset=(-0.06, 0.12), prefer=(0.3, 1)), **legs(5))]},
         {"id": "solo-heart-overhead", "name": "Tim trên đầu", "category": "solo", "difficulty": 1,
          "tags": ["standing", "cute"], "tip": "Vòng hai tay lên đỉnh đầu thành hình trái tim",
@@ -178,7 +178,7 @@ def solo_poses():
 
 
 def selfie_poses():
-    s, y = 1.7, 1.15
+    s, y = 1.7, 1.08
     return [
         {"id": "selfie-center", "name": "Chính diện", "category": "selfie", "difficulty": 1,
          "tags": ["face"], "tip": "Mặt ở giữa khung, cằm hơi hạ, giữ máy ngang tầm mắt",
@@ -188,13 +188,13 @@ def selfie_poses():
          "figures": [Figure(0.5, y, s, head=-16)]},
         {"id": "selfie-peace", "name": "Chữ V cạnh má", "category": "selfie", "difficulty": 1,
          "tags": ["face", "hand"], "tip": "Đưa tay chữ V sát má, cười tươi",
-         "figures": [Figure(0.5, y, s, ra=Limb(target="nose", offset=(-0.095, 0.01), prefer=(-0.3, 1)))]},
+         "figures": [Figure(0.5, y, s, ra=Limb(target="nose", offset=(-0.075, 0.015), prefer=(-0.3, 1), k_upper=0.45))]},
         {"id": "selfie-chin", "name": "Chống cằm", "category": "selfie", "difficulty": 1,
          "tags": ["face", "hand"], "tip": "Tay chống nhẹ dưới cằm, ánh mắt nhìn thẳng",
-         "figures": [Figure(0.5, y, s, ra=Limb(target="nose", offset=(-0.01, 0.06), prefer=(-0.15, 1)))]},
+         "figures": [Figure(0.5, y, s, ra=Limb(target="nose", offset=(-0.01, 0.055), prefer=(-0.15, 1), k_upper=0.45))]},
         {"id": "selfie-thirds", "name": "Lệch 1/3", "category": "selfie", "difficulty": 1,
          "tags": ["face", "composition"], "tip": "Đặt mặt ở đường 1/3 bên phải, chừa khoảng trống cho phông nền",
-         "figures": [Figure(0.64, 1.12, 1.55)], "guides": thirds()},
+         "figures": [Figure(0.64, 1.05, 1.55)], "guides": thirds()},
         {"id": "selfie-over-shoulder", "name": "Ngoái qua vai", "category": "selfie", "difficulty": 2,
          "tags": ["face"], "tip": "Xoay người sang bên rồi ngoái mặt lại nhìn ống kính",
          "figures": [Figure(0.5, y, s, yaw=55, head=-6)]},
@@ -210,7 +210,7 @@ def duo_poses():
         b.ra = Limb(target=(a_hip[0] + 0.03, a_hip[1] - 0.04), prefer=(0, 1))
         return [a, b]
 
-    top = 0.215
+    top = 0.235
     return [
         {"id": "duo-side-by-side", "name": "Đứng cạnh nhau", "category": "duo", "difficulty": 1,
          "tags": ["standing"], "tip": "Hai người đứng sát nhau, vai chạm vai, cùng nhìn ống kính",

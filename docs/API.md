@@ -128,8 +128,13 @@ square side), plus a neck stroke from the shoulder midpoint to the head circle, 
     "status": "ok" | "no_person" | "wrong_count" | "partial" | "not_applicable",
     "score": 87,                 // 0..100, null unless status is ok or partial
     "ready": true,               // score >= 85 and status == ok
+    // limb ids are the library's limb ids plus "head" (shoulder midpoint → nose: neck + head tilt;
+    // colour the neck stroke and head circle with it)
     "limbs": [ {"person": 0, "limb": "left_upper_arm", "ok": true, "score": 0.93} ],
-    "hints": ["Giơ tay phải cao hơn", "Lùi ra xa một chút"]   // Vietnamese, most important first, ≤ 2
+    // only for composition poses with targets: one entry per target, in guide order
+    "targets": [ {"index": 0, "label": "1", "ok": true, "score": 0.97} ],
+    "hints": ["Giơ tay bên phải cao hơn", "Lùi ra xa một chút"]   // Vietnamese, most important first, ≤ 2
+    // hints use screen sides ("bên trái/phải" as the user sees the preview); when ready: ["Giữ nguyên tư thế"]
   },
   "elapsed_ms": 140
 }
