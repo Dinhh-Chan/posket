@@ -1,6 +1,6 @@
 # PoseCam API contract (v1)
 
-Base URL in development: `http://10.0.2.2:8000` from the Android emulator, `http://<LAN-IP>:8000`
+Base URL in development: `http://10.0.2.2:8020` from the Android emulator, `http://<LAN-IP>:8020`
 from a phone. All JSON. Auth: `Authorization: Bearer <jwt>` on every endpoint except register,
 login, health and the pose library. Timestamps are ISO-8601 UTC strings. IDs are integers.
 
