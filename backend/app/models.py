@@ -63,7 +63,11 @@ class Friendship(Base):
 
 class Photo(Base):
     __tablename__ = "photos"
-    __table_args__ = (Index("ix_photos_sender_id_id", "sender_id", "id"),)
+    __table_args__ = (
+        Index("ix_photos_sender_id_id", "sender_id", "id"),
+        # Retried uploads carry the same client_id; at most one photo per sender and client_id.
+        Index("ux_photos_sender_client_id", "sender_id", "client_id", unique=True),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     sender_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
@@ -71,6 +75,7 @@ class Photo(Base):
     height: Mapped[int]
     caption: Mapped[str | None] = mapped_column(String(60), default=None)
     pose_id: Mapped[str | None] = mapped_column(String(64), default=None)
+    client_id: Mapped[str | None] = mapped_column(String(64), default=None)
     created_at: Mapped[datetime] = mapped_column(default=utcnow)
 
     sender: Mapped[User] = relationship(lazy="joined")

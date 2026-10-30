@@ -260,3 +260,36 @@ describe('API client', () => {
     expect(api.authHeaders()).toEqual({ Authorization: 'Bearer tok123' });
   });
 });
+
+describe('photo upload retry', () => {
+  it('retries once after a network error with the same client_id', async () => {
+    const { api, calls } = setup([
+      new TypeError('Network request failed'),
+      jsonResponse(201, { id: 12 }),
+    ]);
+    const photo = await api.sendPhoto({
+      file: { uri: 'file:///cache/c.jpg' },
+      clientId: 'cap-test-0001',
+    });
+    expect(photo).toEqual({ id: 12 });
+    expect(calls).toHaveLength(2);
+    expect(field(calls[0], 'client_id')).toBe('cap-test-0001');
+    expect(field(calls[1], 'client_id')).toBe('cap-test-0001');
+  });
+
+  it('does not retry without a client_id or after an HTTP error', async () => {
+    const offline = setup([new TypeError('Network request failed')]);
+    await expect(
+      offline.api.sendPhoto({ file: { uri: 'file:///cache/d.jpg' } }),
+    ).rejects.toMatchObject({ code: 'network' });
+    expect(offline.calls).toHaveLength(1);
+
+    const refused = setup([
+      jsonResponse(403, { detail: 'forbidden', message: 'Chỉ gửi được ảnh cho bạn bè' }),
+    ]);
+    await expect(
+      refused.api.sendPhoto({ file: { uri: 'file:///cache/e.jpg' }, clientId: 'cap-test-0002' }),
+    ).rejects.toMatchObject({ status: 403 });
+    expect(refused.calls).toHaveLength(1);
+  });
+});

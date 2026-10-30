@@ -7,6 +7,7 @@ from typing import Annotated
 from fastapi import APIRouter, File, Form, Query, Response, UploadFile, status
 from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
 
 from app import friendship, images, photo_access, storage
 from app.db import utcnow
@@ -18,6 +19,7 @@ from app.validation import (
     parse_id_list,
     parse_optional_int,
     validate_caption,
+    validate_client_id,
     validate_emoji,
     validate_pose_id,
 )
@@ -35,7 +37,14 @@ def upload_photo(
     recipient_ids: Annotated[str | None, Form()] = None,
     mirror: Annotated[bool, Form()] = False,
     pose_id: Annotated[str | None, Form()] = None,
+    client_id: Annotated[str | None, Form()] = None,
 ) -> PhotoOut:
+    clean_client_id = validate_client_id(client_id)
+    if clean_client_id:
+        # A retry of an upload that already succeeded (the response was lost): same photo back.
+        existing = _photo_by_client_id(db, user.id, clean_client_id)
+        if existing is not None:
+            return photo_out(photo_access.reload_photo(db, existing), user.id)
     clean_caption = validate_caption(caption)
     clean_pose_id = validate_pose_id(pose_id)
     requested = parse_id_list(recipient_ids)
@@ -59,6 +68,7 @@ def upload_photo(
         height=encoded.height,
         caption=clean_caption,
         pose_id=clean_pose_id,
+        client_id=clean_client_id,
         recipients=[PhotoRecipient(user_id=rid) for rid in recipients],
     )
     db.add(photo)
@@ -67,11 +77,25 @@ def upload_photo(
     try:
         storage.write_atomic(path, encoded.data)
         db.commit()
+    except IntegrityError:
+        # Two copies of the same upload raced; keep the one that committed first.
+        db.rollback()
+        storage.remove(path)
+        existing = _photo_by_client_id(db, user.id, clean_client_id) if clean_client_id else None
+        if existing is None:
+            raise
+        return photo_out(photo_access.reload_photo(db, existing), user.id)
     except BaseException:
         db.rollback()
         storage.remove(path)
         raise
     return photo_out(photo_access.reload_photo(db, photo.id), user.id)
+
+
+def _photo_by_client_id(db: Session, sender_id: int, client_id: str) -> int | None:
+    return db.scalar(
+        select(Photo.id).where(Photo.sender_id == sender_id, Photo.client_id == client_id)
+    )
 
 
 @router.get("/feed", response_model=FeedOut)

@@ -64,7 +64,10 @@ password shorter than 6 characters, a missing field, `limit=0`).
   - `caption` (optional, ≤ 60 chars),
   - `recipient_ids` (optional, comma-separated; omitted or empty = all friends; must be friends),
   - `mirror` (`true`/`false`, default false: flip horizontally, for front-camera snapshots that are not mirrored),
-  - `pose_id` (optional).
+  - `pose_id` (optional),
+  - `client_id` (optional, 8–64 chars of `[A-Za-z0-9_-]`, chosen by the app per capture): an upload
+    with a `client_id` the sender already used returns that photo instead of storing a new one, so
+    the app can safely retry after a network error.
   The server crops the centre square, applies EXIF orientation, mirrors if asked, resizes to at most
   1080×1080, strips metadata and stores JPEG q=88. → `201 Photo`.
 - `GET /photos/feed?before_id=&limit=30` → `{"items": [Photo], "next_before_id": 7 | null}`.

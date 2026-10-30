@@ -59,6 +59,7 @@ import type { Pose } from '../pose/types';
 import { useSession } from '../state/SessionContext';
 import { loadAutoCapture, saveAutoCapture } from '../state/storage';
 import { colors, radii, spacing } from '../theme';
+import { newClientId } from '../utils/clientId';
 
 type Position = 'front' | 'back';
 
@@ -66,6 +67,8 @@ interface Captured {
   uri: string;
   mirror: boolean;
   poseId: string | null;
+  /** Upload key; reused if the upload is retried. */
+  clientId: string;
 }
 
 export interface CameraPageProps {
@@ -242,7 +245,12 @@ export function CameraPage({
       }
       setCaption('');
       setRecipients([]);
-      setCaptured({ uri: saved.uri, mirror, poseId: pose?.id ?? null });
+      setCaptured({
+        uri: saved.uri,
+        mirror,
+        poseId: pose?.id ?? null,
+        clientId: newClientId(),
+      });
     } catch {
       Alert.alert('Không chụp được ảnh', 'Camera chưa sẵn sàng, thử lại nhé.');
     } finally {
@@ -307,6 +315,7 @@ export function CameraPage({
         recipientIds: recipients,
         mirror: captured.mirror,
         poseId: captured.poseId,
+        clientId: captured.clientId,
       });
       setSent(true);
       onSent();

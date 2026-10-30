@@ -62,6 +62,19 @@ def validate_pose_id(raw: str | None) -> str | None:
     return pose_id or None
 
 
+CLIENT_ID_RE = re.compile(r"^[A-Za-z0-9_-]{8,64}$")
+
+
+def validate_client_id(raw: str | None) -> str | None:
+    """Optional upload key chosen by the app (8–64 chars of [A-Za-z0-9_-]); retries reuse it."""
+    client_id = (raw or "").strip()
+    if not client_id:
+        return None
+    if not CLIENT_ID_RE.match(client_id):
+        raise ApiError("validation_error", "client_id không hợp lệ")
+    return client_id
+
+
 def parse_id_list(raw: str | None) -> list[int]:
     """`"3, 5,8"` → [3, 5, 8] (order kept, duplicates dropped); empty → []."""
     ids: list[int] = []

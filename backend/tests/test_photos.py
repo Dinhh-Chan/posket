@@ -190,3 +190,18 @@ def test_reactions(api: Api, client: TestClient) -> None:
         client.post("/photos/9999/reactions", json={"emoji": "❤️"}, headers=anh.headers).status_code
         == 404
     )
+
+
+def test_retried_upload_with_same_client_id_creates_one_photo(api: Api) -> None:
+    linh, anh, _, chi = three_friends(api)
+    first = api.upload(linh, client_id="cap-7f3a9c21", caption="Một lần thôi")
+    again = api.upload(linh, client_id="cap-7f3a9c21", caption="Một lần thôi")
+    assert again["id"] == first["id"]
+    assert feed_ids(api, anh) == [first["id"]]
+    # Another sender may use the same key; the key only deduplicates per sender.
+    api.befriend(chi, anh)
+    other = api.upload(chi, client_id="cap-7f3a9c21")
+    assert other["id"] != first["id"]
+    # A new key is a new photo; malformed keys are rejected.
+    assert api.upload(linh, client_id="cap-8b4d0e55")["id"] != first["id"]
+    assert api.upload(linh, client_id="bad key!", expect=422)["detail"] == "validation_error"

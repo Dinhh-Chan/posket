@@ -45,6 +45,24 @@ def init_db(engine: Engine) -> None:
     from app import models  # noqa: F401  (register the tables on Base.metadata)
 
     Base.metadata.create_all(engine)
+    _add_missing_columns(engine)
+
+
+def _add_missing_columns(engine: Engine) -> None:
+    """Columns added after the first release, for databases created before them (SQLite has no
+    migrations here; adding a nullable column is safe)."""
+    from sqlalchemy import inspect, text
+
+    columns = {c["name"] for c in inspect(engine).get_columns("photos")}
+    if "client_id" not in columns:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE photos ADD COLUMN client_id VARCHAR(64)"))
+            conn.execute(
+                text(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS ux_photos_sender_client_id "
+                    "ON photos (sender_id, client_id)"
+                )
+            )
 
 
 def get_db(request: Request) -> Iterator[Session]:

@@ -154,6 +154,11 @@ export interface SendPhotoInput {
   recipientIds?: number[];
   mirror?: boolean;
   poseId?: string | null;
+  /**
+   * Key for this capture (8–64 chars of [A-Za-z0-9_-]). With it the upload is retried once
+   * after a network error and the server never stores the photo twice.
+   */
+  clientId?: string;
 }
 
 export interface AnalyzeInput {

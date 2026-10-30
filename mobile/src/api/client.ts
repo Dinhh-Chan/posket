@@ -107,6 +107,27 @@ async function readErrorBody(
   }
 }
 
+const RETRY_DELAY_MS = 500;
+
+function photoForm(input: SendPhotoInput): FormData {
+  const form = new FormData();
+  form.append('file', filePart(input.file, 'photo.jpg'));
+  if (input.caption && input.caption.trim().length > 0) {
+    form.append('caption', input.caption.trim());
+  }
+  if (input.recipientIds && input.recipientIds.length > 0) {
+    form.append('recipient_ids', input.recipientIds.join(','));
+  }
+  form.append('mirror', input.mirror ? 'true' : 'false');
+  if (input.poseId) {
+    form.append('pose_id', input.poseId);
+  }
+  if (input.clientId) {
+    form.append('client_id', input.clientId);
+  }
+  return form;
+}
+
 export function createApiClient(options: ApiClientOptions) {
   const fetchImpl: FetchLike =
     options.fetchImpl ?? ((input, init) => fetch(input, init));
@@ -251,20 +272,23 @@ export function createApiClient(options: ApiClientOptions) {
       request<null>('DELETE', `/friends/${userId}`),
 
     // Photos
-    sendPhoto: (input: SendPhotoInput) => {
-      const form = new FormData();
-      form.append('file', filePart(input.file, 'photo.jpg'));
-      if (input.caption && input.caption.trim().length > 0) {
-        form.append('caption', input.caption.trim());
+    sendPhoto: async (input: SendPhotoInput) => {
+      const send = () =>
+        request<Photo>('POST', '/photos', {
+          form: photoForm(input),
+          timeoutMs: 45000,
+        });
+      try {
+        return await send();
+      } catch (e) {
+        // A pooled connection the server has just closed fails a POST at once with a network
+        // error and nothing stored. client_id makes the upload idempotent, so one retry is safe.
+        if (input.clientId && e instanceof ApiError && e.code === 'network') {
+          await new Promise<void>(resolve => setTimeout(resolve, RETRY_DELAY_MS));
+          return send();
+        }
+        throw e;
       }
-      if (input.recipientIds && input.recipientIds.length > 0) {
-        form.append('recipient_ids', input.recipientIds.join(','));
-      }
-      form.append('mirror', input.mirror ? 'true' : 'false');
-      if (input.poseId) {
-        form.append('pose_id', input.poseId);
-      }
-      return request<Photo>('POST', '/photos', { form, timeoutMs: 45000 });
     },
     feed: (params: { beforeId?: number | null; limit?: number } = {}) =>
       request<FeedPage>('GET', '/photos/feed', {

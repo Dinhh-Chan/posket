@@ -31,4 +31,4 @@ if [[ "${POSECAM_DETECTOR:-mediapipe}" != "off" ]]; then
   fi
 fi
 
-exec uv run --no-sync uvicorn app.main:app --host 0.0.0.0 --port "$PORT" --reload --reload-dir app
+exec uv run --no-sync uvicorn app.main:app --host 0.0.0.0 --port "$PORT" --reload --reload-dir app --timeout-keep-alive 75
