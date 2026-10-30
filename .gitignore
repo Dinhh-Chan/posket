@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+backend/models/*.task
+backend/models/*.tflite
+backend/var/
+# Node / React Native
+node_modules/
+mobile/android/.gradle/
+mobile/android/app/build/
+mobile/android/build/
+mobile/ios/Pods/
+mobile/ios/build/
+*.keystore
+!debug.keystore
+.metro-health-check*
+# OS / editors
+.DS_Store
+.idea/
+.vscode/
+*.log
